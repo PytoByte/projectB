@@ -22,7 +22,7 @@ class MyClient() {
         BrowserUserAgent()
     }
 
-    suspend fun getAgents(agents: MutableList<AgentDTO>): JsonArray {
+    suspend fun getAgents(): JsonArray {
         val response: HttpResponse = client.request("https://valorant-api.com/v1/agents?language=ru-RU&isPlayableCharacter=true") {
             method = HttpMethod.Get
         }

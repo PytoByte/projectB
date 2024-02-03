@@ -1,3 +1,5 @@
+import com.android.build.api.dsl.Packaging
+
 val ktor_version: String by project
 
 plugins {
