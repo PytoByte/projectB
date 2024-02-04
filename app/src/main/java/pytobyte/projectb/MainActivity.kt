@@ -8,8 +8,11 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -36,6 +39,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -43,12 +47,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,6 +65,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import pytobyte.projectb.client.DTO.AbilitiesDTO
 import pytobyte.projectb.client.DTO.AgentDTO
 import pytobyte.projectb.client.MyClient
 import pytobyte.projectb.ui.theme.ProjectBTheme
@@ -332,11 +340,16 @@ fun AgentScreen(screenState: MutableState<String>, agent: AgentDTO) {
                 }
                 Spacer(modifier = Modifier.padding(5.dp))
                 Text(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier,
                     text = agent.description,
                     fontSize = 20.sp,
                     color = Color.Black
                 )
+                Row() {
+                    agent.characterTags?.forEach {
+                        rotatingCard(it)
+                    }
+                }
             }
         }
     }
@@ -349,6 +362,48 @@ fun AgentScreen(screenState: MutableState<String>, agent: AgentDTO) {
         if (exitState.value) {
             delay(500)
             screenState.value = "column"
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun rotatingCard(tag: String) {
+
+    val state = remember { mutableStateOf(true) }
+    val contentState = remember { mutableStateOf(true) }
+
+    val rotateValue = animateFloatAsState(
+        targetValue = if (state.value) 0f else 180f,
+        animationSpec = tween(durationMillis = 500, easing = LinearEasing), label = ""
+    )
+
+    LaunchedEffect(rotateValue.value) {
+        contentState.value = rotateValue.value <= 90f
+    }
+
+    Card(
+        modifier = Modifier
+            .graphicsLayer(rotationY = rotateValue.value)
+            .size(100.dp),
+        onClick = { state.value=state.value.not() }
+    ) {
+        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            if (contentState.value) {
+                Text(text="Тег")
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(modifier= Modifier
+                        .fillMaxSize()
+                        .graphicsLayer(rotationY = 180f), text=tag)
+                    Text(modifier= Modifier
+                        .fillMaxSize()
+                        .graphicsLayer(rotationY = 180f), text=tag)
+                }
+            }
         }
     }
 }
