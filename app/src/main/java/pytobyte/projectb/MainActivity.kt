@@ -5,16 +5,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -31,8 +36,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -61,6 +68,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -176,7 +185,24 @@ fun agentsList(
         mutableStateOf(false)
     }
 
-    val lazyScrollState:LazyListState  = rememberLazyListState(selected.value)
+    val lazyScrollState: LazyListState = rememberLazyListState(selected.value)
+
+    val infiniteTransition = rememberInfiniteTransition()
+
+    if (agents.isEmpty()) {
+        val rotationValue by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ), label = ""
+        )
+
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Image(modifier = Modifier.rotate(rotationValue).size(20.dp), painter = painterResource(id = R.drawable.loading), contentDescription = "loading")
+        }
+    }
 
     AnimatedVisibility(
         columnAnimationState,
@@ -283,37 +309,42 @@ fun agentsList(
 fun AgentScreen(screenState: MutableState<String>, agent: AgentDTO) {
     val screenAnimationState = remember { MutableTransitionState(false) }
     val exitState = remember { mutableStateOf(false) }
+    val backButtonState = remember { mutableStateOf(false) }
+    val descriptionState = remember { MutableTransitionState(false) }
 
-    AnimatedVisibility(
-        screenAnimationState,
-        Modifier.fillMaxSize(),
-        enter = slideInHorizontally() + fadeIn(),
-        exit = slideOutHorizontally(
-            targetOffsetX = { fullWidth -> fullWidth },
-            animationSpec = tween(durationMillis = 500)
-        ) + fadeOut(animationSpec = tween(durationMillis = 400, easing = LinearEasing))
-    ) {
-        Scaffold(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(10.dp)
-                .background(color = Color.Transparent),
-            bottomBar = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(10.dp)
+            .background(color = Color.Transparent),
+        bottomBar = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                AnimatedVisibility(
+                    visible = backButtonState.value,
+                    enter = slideInVertically(initialOffsetY = {fullHeight -> fullHeight+200}),
+                    exit = slideOutVertically(targetOffsetY = { fullHeight -> fullHeight }) + fadeOut()
                 ) {
                     Button(onClick = {
-                        screenAnimationState.targetState = false
+                        backButtonState.value = backButtonState.value.not()
                         exitState.value = true
                     }) {
                         Text("Назад")
                     }
                 }
             }
-        )
-        { paddingValues ->
-            Column(modifier = Modifier.padding(paddingValues)) {
+        }
+    )
+    { paddingValues ->
+        Column(modifier = Modifier.padding(paddingValues)) {
+            AnimatedVisibility(
+                screenAnimationState,
+                enter = fadeIn()+ slideInVertically(initialOffsetY = {fullHeight -> -200}),
+                exit = fadeOut()+ slideOutVertically(targetOffsetY = {fullHeight -> -200})
+            ) {
                 Row() {
                     AsyncImage(
                         modifier = Modifier.size(70.dp),
@@ -338,28 +369,58 @@ fun AgentScreen(screenState: MutableState<String>, agent: AgentDTO) {
                         )
                     }
                 }
+            }
+            AnimatedVisibility(
+                descriptionState,
+                Modifier.fillMaxSize(),
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
                 Spacer(modifier = Modifier.padding(5.dp))
-                Text(
-                    modifier = Modifier,
-                    text = agent.description,
-                    fontSize = 20.sp,
-                    color = Color.Black
-                )
-                Row() {
-                    agent.characterTags?.forEach {
-                        rotatingCard(it)
+                Column(Modifier.fillMaxSize()) {
+                    Text(
+                        modifier = Modifier,
+                        text = agent.description,
+                        fontSize = 20.sp,
+                        color = Color.Black
+                    )
+                    Row() {
+                        agent.abilities?.forEachIndexed { index, it ->
+                            val state = remember { MutableTransitionState(false) }
+
+                            AnimatedVisibility(
+                                visibleState = state,
+                                enter = slideInHorizontally() + scaleIn()
+                            ) {
+                                rotatingCard(it)
+                            }
+
+                            LaunchedEffect(Unit) {
+                                delay((100 * index).toLong())
+                                state.targetState = state.currentState.not()
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
+
     LaunchedEffect(Unit) {
         screenAnimationState.targetState = true
+        delay(500)
+        descriptionState.targetState = true
+        delay(500)
+        backButtonState.value = true
     }
 
     LaunchedEffect(exitState.value) {
         if (exitState.value) {
+            delay(500)
+            descriptionState.targetState = descriptionState.currentState.not()
+            delay(500)
+            screenAnimationState.targetState = false
             delay(500)
             screenState.value = "column"
         }
@@ -369,7 +430,7 @@ fun AgentScreen(screenState: MutableState<String>, agent: AgentDTO) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun rotatingCard(tag: String) {
+fun rotatingCard(tag: AbilitiesDTO) {
 
     val state = remember { mutableStateOf(true) }
     val contentState = remember { mutableStateOf(true) }
@@ -386,22 +447,40 @@ fun rotatingCard(tag: String) {
     Card(
         modifier = Modifier
             .graphicsLayer(rotationY = rotateValue.value)
-            .size(100.dp),
-        onClick = { state.value=state.value.not() }
+            .animateContentSize(),
+        onClick = { state.value = state.value.not() }
     ) {
-        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier,
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.Start
+        ) {
             if (contentState.value) {
-                Text(text="Тег")
+                AsyncImage(
+                    modifier = Modifier.size(50.dp),
+                    model = tag.displayIcon,
+                    contentDescription = "image",
+                    error = painterResource(id = R.drawable.unknow)
+                )
             } else {
                 Column(
-                    modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier
+                        .heightIn(50.dp)
+                        .widthIn(50.dp, 230.dp)
                 ) {
-                    Text(modifier= Modifier
-                        .fillMaxSize()
-                        .graphicsLayer(rotationY = 180f), text=tag)
-                    Text(modifier= Modifier
-                        .fillMaxSize()
-                        .graphicsLayer(rotationY = 180f), text=tag)
+                    Text(
+                        modifier = Modifier
+                            .graphicsLayer(rotationY = 180f),
+                        text = tag.displayName ?: "Без названия",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        modifier = Modifier
+                            .graphicsLayer(rotationY = 180f),
+                        text = tag.description ?: "Неизвестно",
+                        fontSize = 15.sp
+                    )
                 }
             }
         }

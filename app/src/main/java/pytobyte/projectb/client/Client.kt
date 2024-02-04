@@ -26,8 +26,8 @@ class MyClient() {
         val response: HttpResponse = client.request("https://valorant-api.com/v1/agents?language=ru-RU&isPlayableCharacter=true") {
             method = HttpMethod.Get
         }
-        println(response.bodyAsText())
-        println(Json.decodeFromString<JsonElement>(response.bodyAsText()).jsonObject["data"])
+        //println(response.bodyAsText())
+        //println(Json.decodeFromString<JsonElement>(response.bodyAsText()).jsonObject["data"])
 
         return Json.decodeFromString<JsonElement>(response.bodyAsText()).jsonObject["data"]!!.jsonArray
     }

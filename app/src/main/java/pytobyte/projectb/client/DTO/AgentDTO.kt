@@ -24,6 +24,6 @@ data class AgentDTO(
     val isPlayableCharacter: Boolean,
     val isAvailableForTest: Boolean,
     val isBaseContent: Boolean,
-    val role: RoleDTO,
-    val abilities: Array<AbilitiesDTO>*/
+    val role: RoleDTO,*/
+    val abilities: Array<AbilitiesDTO>
 )
