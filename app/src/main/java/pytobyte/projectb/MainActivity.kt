@@ -28,6 +28,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -202,7 +204,9 @@ fun agentsList(
         )
 
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Image(modifier = Modifier.rotate(rotationValue).size(20.dp), painter = painterResource(id = R.drawable.loading), contentDescription = "loading")
+            Image(modifier = Modifier
+                .rotate(rotationValue)
+                .size(20.dp), painter = painterResource(id = R.drawable.loading), contentDescription = "loading")
         }
     }
 
@@ -453,7 +457,7 @@ fun rotatingCard(tag: AbilitiesDTO) {
         onClick = { state.value = state.value.not() }
     ) {
         Column(
-            modifier = Modifier,
+            modifier = Modifier.verticalScroll(state = rememberScrollState()),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.Start
         ) {
